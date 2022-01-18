@@ -7,41 +7,89 @@
 **                                                                                                **
 \*                                                                                                */
 
-lazy val root = project
-  .in(file("."))
-  .aggregate(profiledb, plugin, profilingSbtPlugin)
-  .settings(
-    Seq(
-      name := "profiling-root",
-      publish := {},
-      publishLocal := {},
-      crossSbtVersions := List("0.13.17", "1.1.1"),
-      watchSources ++=
-        (watchSources in plugin).value ++
-          (watchSources in profiledb).value ++
-          (watchSources in integrations).value
-    )
-  )
+val bin212 = Seq("2.12.15", "2.12.14", "2.12.13")
+// val bin213 = Seq("2.13.4", "2.13.3", "2.13.2", "2.13.1", "2.13.0")
+lazy val commonSettings = Seq(
+  organization := "ch.epfl.scala",
+  version := "1.0.1-SNAPSHOT",
+  scalaVersion := "2.12.15",
+  // crossTarget := target.value / s"scala-${scalaVersion.value}"
+)
 
-val metalsSettings = List(
-  scalacOptions ++= {
-    val version = Keys.scalaBinaryVersion.value
-    val toAdd = List("-Yrangepos", "-Xplugin-require:semanticdb")
-    if (version == "2.12") toAdd else Nil
-  },
-  libraryDependencies ++= {
-    val version = Keys.scalaBinaryVersion.value
-    if (version == "2.12")
-      List(compilerPlugin("org.scalameta" % "semanticdb-scalac" % "2.1.5" cross CrossVersion.full))
-    else Nil
+// Copied from
+// https://github.com/scalameta/scalameta/blob/370e304b0d10db1dd65fc79a5abc1f39004aeffd/build.sbt#L724-L737
+lazy val fullCrossVersionSettings = Seq(
+  crossVersion := CrossVersion.full,
+  crossScalaVersions := bin212,
+  Compile / unmanagedSourceDirectories += {
+    // NOTE: sbt 0.13.8 provides cross-version support for Scala sources
+    // (http://www.scala-sbt.org/0.13/docs/sbt-0.13-Tech-Previews.html#Cross-version+support+for+Scala+sources).
+    // Unfortunately, it only includes directories like "scala_2.11" or "scala_2.12",
+    // not "scala_2.11.8" or "scala_2.12.1" that we need.
+    // That's why we have to work around here.
+    val base = (Compile / sourceDirectory).value
+    val versionDir = scalaVersion.value.replaceAll("-.*", "")
+    base / ("scala-" + versionDir)
   }
 )
 
+import sbt.Keys.scalaOrganization
+import scalapb.compiler.Version.scalapbVersion
+
+lazy val profiledb = (project in file("profiledb"))
+  .settings(
+    commonSettings,
+    fullCrossVersionSettings,
+    name := "profiledb",
+    libraryDependencies ++= Seq(
+      "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+      "com.thesamet.scalapb" %% "scalapb-runtime" % scalapbVersion % "protobuf",
+      "com.google.protobuf" % "protobuf-java" % "3.11.0"
+    ),
+    PB.targets in Compile := Seq(
+      scalapb.gen() -> (sourceManaged in Compile).value
+    )
+  )
+
+lazy val plugin = (project in file("plugin"))
+  .settings(
+    commonSettings,
+    fullCrossVersionSettings,
+    name := "scalac-profiling",
+    libraryDependencies ++= Seq(
+      "com.lihaoyi" %% "pprint" % "0.5.6",
+      scalaOrganization.value % "scala-compiler" % scalaVersion.value
+    ),
+    test in assembly := {},
+    packageBin in Compile := (assembly in (Compile)).value,
+      assemblyOption in assembly :=
+    (assemblyOption in assembly).value
+      .copy(includeScala = false, includeDependency = true)
+  ).dependsOn(profiledb)
+
+
+
+// lazy val root = project
+//   .in(file("."))
+//   .aggregate(profiledb, plugin, profilingSbtPlugin)
+//   .settings(
+//     Seq(
+//       name := "profiling-root",
+//       publish := {},
+//       publishLocal := {},
+//       crossSbtVersions := List("0.13.17", "1.1.1"),
+//       watchSources ++=
+//         (watchSources in plugin).value ++
+//           (watchSources in profiledb).value ++
+//           (watchSources in integrations).value
+//     )
+//   )
+
+/*
 import _root_.ch.epfl.scala.profiling.build.BuildImplementation.BuildDefaults
 import com.trueaccord.scalapb.compiler.Version.scalapbVersion
 lazy val profiledb = project
   .in(file("profiledb"))
-  //.settings(metalsSettings)
   .settings(
     // Specify scala version to allow third-party software to use this module
     scalaVersion := "2.12.6",
@@ -54,7 +102,6 @@ lazy val profiledb = project
 // Do not change the lhs id of this plugin, `BuildPlugin` relies on it
 lazy val plugin = project
   .dependsOn(profiledb)
-  //.settings(metalsSettings)
   .settings(
     name := "scalac-profiling",
     libraryDependencies ++= List(
@@ -144,7 +191,6 @@ lazy val vscodeIntegration = project
 
 lazy val profilingSbtPlugin = project
   .in(file("sbt-plugin"))
-  //.settings(metalsSettings)
   .settings(
     name := "sbt-scalac-profiling",
     sbtPlugin := true,
@@ -268,3 +314,5 @@ lazy val integrations = project
 val proxy = project
   .in(file(".proxy"))
   .aggregate(Circe, Monocle, Scalatest, Scalac, BetterFiles, Shapeless)//, Magnolia)
+
+  */

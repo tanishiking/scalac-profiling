@@ -15,6 +15,7 @@ import ch.epfl.scala.profiledb.{ProfileDb, ProfileDbPath}
 import ch.epfl.scala.profiledb.utils.AbsolutePath
 import ch.epfl.scala.profilers.ProfilingImpl
 import ch.epfl.scala.profilers.tools.Logger
+import ch.epfl.scala.profilers.tools.SettingsOps
 
 import scala.reflect.internal.util.{SourceFile, Statistics, StatisticsStatics}
 import scala.reflect.io.Path
@@ -24,7 +25,7 @@ import scala.tools.nsc.plugins.{Plugin, PluginComponent}
 import scala.util.Try
 import scala.util.matching.Regex
 
-class ProfilingPlugin(val global: Global) extends Plugin {
+class ProfilingPlugin(val global: Global) extends Plugin with SettingsOps {
   // Every definition used at init needs to be lazy otherwise it slays the compiler
   val name = "scalac-profiling"
   val description = "Adds instrumentation to keep an eye on Scalac performance."
@@ -273,8 +274,8 @@ class ProfilingPlugin(val global: Global) extends Plugin {
     override def newPhase(prev: Phase): Phase = {
       new StdPhase(prev) {
         override def apply(unit: global.CompilationUnit): Unit = {
-          if (StatisticsStatics.areSomeColdStatsEnabled() &&
-            global.statistics.areStatisticsLocallyEnabled &&
+          if (
+            areStatisticsEnabled(global) &&
             !config.noDb) {
             val currentSourceFile = unit.source
             val compilationUnitEntry = profileDbEntryFor(currentSourceFile)
