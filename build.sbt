@@ -8,11 +8,11 @@
 \*                                                                                                */
 
 val bin212 = Seq("2.12.15", "2.12.14", "2.12.13")
-// val bin213 = Seq("2.13.4", "2.13.3", "2.13.2", "2.13.1", "2.13.0")
+val bin213 = Seq("2.13.8", "2.13.7", "2.13.6", "2.13.5", "2.13.4", "2.13.3", "2.13.2", "2.13.1", "2.13.0")
 lazy val commonSettings = Seq(
   organization := "ch.epfl.scala",
   version := "1.0.1-SNAPSHOT",
-  scalaVersion := "2.12.15",
+  scalaVersion := "2.13.8",
   // crossTarget := target.value / s"scala-${scalaVersion.value}"
 )
 
@@ -20,7 +20,7 @@ lazy val commonSettings = Seq(
 // https://github.com/scalameta/scalameta/blob/370e304b0d10db1dd65fc79a5abc1f39004aeffd/build.sbt#L724-L737
 lazy val fullCrossVersionSettings = Seq(
   crossVersion := CrossVersion.full,
-  crossScalaVersions := bin212,
+  crossScalaVersions := bin212 ++ bin213,
   Compile / unmanagedSourceDirectories += {
     // NOTE: sbt 0.13.8 provides cross-version support for Scala sources
     // (http://www.scala-sbt.org/0.13/docs/sbt-0.13-Tech-Previews.html#Cross-version+support+for+Scala+sources).
